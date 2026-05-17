@@ -1,6 +1,18 @@
 import sys
 import os
-import pcbnew
+
+try:
+    import pcbnew
+except ModuleNotFoundError:
+    pcbnew_path = os.environ.get('PCBNEW_PATH')
+    if not pcbnew_path:
+        raise
+
+    pcbnew_dir = os.path.dirname(pcbnew_path)
+    if pcbnew_dir and pcbnew_dir not in sys.path:
+        sys.path.insert(0, pcbnew_dir)
+
+    import pcbnew
 
 if not hasattr(pcbnew, 'VIATYPE_BLIND_BURIED'):
     if hasattr(pcbnew, 'VIATYPE_BLIND'):
