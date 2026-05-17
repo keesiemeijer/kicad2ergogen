@@ -20,6 +20,9 @@ if not hasattr(pcbnew, 'VIATYPE_BLIND_BURIED'):
     elif hasattr(pcbnew, 'VIATYPE_BURIED'):
         pcbnew.VIATYPE_BLIND_BURIED = pcbnew.VIATYPE_BURIED
 
+if not hasattr(pcbnew.EDA_SHAPE, 'IsFilled') and hasattr(pcbnew.EDA_SHAPE, 'IsAnyFill'):
+    pcbnew.EDA_SHAPE.IsFilled = pcbnew.EDA_SHAPE.IsAnyFill
+
 from kigadgets.board import Board
 from kigadgets.item import HasLayer, HasPosition, HasOrientation, TextEsque
 
