@@ -83,6 +83,21 @@ def print_diff(fp1, fp2):
     if not diff1 and not diff2:
         print("No differences found.")
 
+    return diff1, diff2
+
+def is_ignorable_polygon_diff(shape):
+    if type(shape).__name__ != 'Polygon':
+        return False
+
+    layer = getattr(shape, 'layer', None)
+    return layer in {'B.Mask', 'B.Courtyard', 'B.Fab'}
+
+def only_ignorable_diffs(diff1, diff2):
+    if len(diff1) != len(diff2):
+        return False
+
+    return all(is_ignorable_polygon_diff(shape) for shape in diff1 + diff2)
+
 pcb = Board.load(file_path)
 
 references = [fp.reference for fp in pcb.footprints]
@@ -140,13 +155,23 @@ print(f"compare={compare}")
 refpcb = Board.load(file_path)
 ref_footprints = refpcb.footprints
 print("\nDiffing footprint instance 1")
-print_diff(ref_footprints[0], XX1)
+diff11, diff12 = print_diff(ref_footprints[0], XX1)
 print("\nDiffing footprint instance 2")
-print_diff(ref_footprints[1], XX2)
+diff21, diff22 = print_diff(ref_footprints[1], XX2)
 print("\nDiffing footprint instance 3")
-print_diff(ref_footprints[2], XX3)
+diff31, diff32 = print_diff(ref_footprints[2], XX3)
 print("\nDiffing footprint instance 4")
-print_diff(ref_footprints[3], XX4)
+diff41, diff42 = print_diff(ref_footprints[3], XX4)
+
+all_diffs = [
+    (diff11, diff12),
+    (diff21, diff22),
+    (diff31, diff32),
+    (diff41, diff42),
+]
+
+if all(not diff1 and not diff2 or only_ignorable_diffs(diff1, diff2) for diff1, diff2 in all_diffs):
+    sys.exit(0)
 
 # If there is a second argument, save the PCB to that file
 if len(sys.argv) > 2:
