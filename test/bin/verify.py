@@ -1,5 +1,13 @@
 import sys
 import os
+import pcbnew
+
+if not hasattr(pcbnew, 'VIATYPE_BLIND_BURIED'):
+    if hasattr(pcbnew, 'VIATYPE_BLIND'):
+        pcbnew.VIATYPE_BLIND_BURIED = pcbnew.VIATYPE_BLIND
+    elif hasattr(pcbnew, 'VIATYPE_BURIED'):
+        pcbnew.VIATYPE_BLIND_BURIED = pcbnew.VIATYPE_BURIED
+
 from kigadgets.board import Board
 from kigadgets.item import HasLayer, HasPosition, HasOrientation, TextEsque
 
