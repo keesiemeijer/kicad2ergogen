@@ -13,25 +13,25 @@ jobs:
       - name: Set up pnpm
         uses: pnpm/action-setup@v2
         with:
-          version: '10'
+          version: "10"
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'pnpm'
+          node-version: "22"
+          cache: "pnpm"
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-          cache: 'pip'
+          python-version: "3.12"
+          cache: "pip"
       - name: Install dependencies
         run: |
           pnpm install
           pip install -r test/bin/requirements.txt
-      - name: Install KiCad 9
+      - name: Install KiCad 10
         run: |
-          # Add KiCad PPA and install KiCad 9
-          sudo add-apt-repository --yes ppa:kicad/kicad-9.0-releases
+          # Add KiCad PPA and install KiCad 10
+          sudo add-apt-repository --yes ppa:kicad/kicad-10.0-releases
           sudo apt-get update
           sudo apt-get install --no-install-recommends --yes kicad
       - name: Run tests
