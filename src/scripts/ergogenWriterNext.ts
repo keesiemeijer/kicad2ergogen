@@ -1,4 +1,4 @@
-import type { SExprNode, SExprItem } from './parser';
+import type { SExprNode, SExprItem } from "./parser";
 
 interface WriterContext {
   current: SExprNode;
@@ -20,24 +20,24 @@ type NodeWriters = NodeWriter[];
 
 const writers: NodeWriters = [
   {
-    name: 'pad',
+    name: "pad",
     match(context: WriterContext) {
-      return context.current.type === 'pad';
+      return context.current.type === "pad";
     },
     write(context: WriterContext) {
       const pad = context.current as SExprNode;
       let padName = pad.items[0];
-      if (typeof padName !== 'string') {
+      if (typeof padName !== "string") {
         throw new Error(`Pad name is not a string: ${JSON.stringify(padName)}`);
       }
-      padName = padName.replace(/^"(.*)"$/, '$1'); // remove quotes
+      padName = padName.replace(/^"(.*)"$/, "$1"); // remove quotes
       const netName = context.getNetName(padName);
 
       context.appendOutputRaw(`(pad "${padName}"`);
 
       for (let i = 1; i < pad.items.length; i++) {
         const item = pad.items[i];
-        context.appendOutputRaw(' ');
+        context.appendOutputRaw(" ");
         context.writeChildItem(item);
       }
 
@@ -45,13 +45,13 @@ const writers: NodeWriters = [
         context.appendOutputRaw(` \${p.${netName}}`);
       }
 
-      context.appendOutputRaw(')');
-    }
+      context.appendOutputRaw(")");
+    },
   },
   {
-    name: 'zone xy',
+    name: "zone xy",
     match(context) {
-      return context.current.type === 'xy' && context.parents.includes('zone');
+      return context.current.type === "xy" && context.parents.includes("zone");
     },
     write(context) {
       context.addExtraFunction(`function zoneXY(point, offsetX, offsetY) {
@@ -64,14 +64,16 @@ const writers: NodeWriters = [
       const node = context.current as SExprNode;
       const x = node.items[0] as string;
       const y = node.items[1] as string;
-      const flippedX = x.startsWith('-') ? x.slice(1) : `-${x}`;
+      const flippedX = x.startsWith("-") ? x.slice(1) : `-${x}`;
       context.appendOutputRaw(`\${zoneXY(p, flip ? ${flippedX} : ${x}, ${y})}`);
     },
   },
   {
-    name: 'xy',
+    name: "xy",
     match(context: WriterContext) {
-      return ['start', 'end', 'mid', 'center', 'xy'].includes(context.current.type);
+      return ["start", "end", "mid", "center", "xy"].includes(
+        context.current.type,
+      );
     },
     write(context: WriterContext) {
       const node = context.current as SExprNode;
@@ -79,115 +81,136 @@ const writers: NodeWriters = [
       const y = node.items[1] as string;
 
       context.appendOutputRaw(`(${node.type} ${x} \${flipN(flip, ${y})})`);
-    }
+    },
   },
   {
-    name: 'layer',
+    name: "layer",
     match(context) {
-      return context.current.type === 'layer';
+      return context.current.type === "layer";
     },
     write(context) {
       const node = context.current as SExprNode;
-      if (node.items.length !== 1) throw new Error('invalid item in "layer" node');
+      if (node.items.length !== 1)
+        throw new Error('invalid item in "layer" node');
       let layerName = node.items[0] as string;
-      if (typeof layerName !== 'string') throw new Error('invalid item in "layer" node');
-      layerName = layerName.replace(/^"(.*)"$/, '$1'); // remove quotes
+      if (typeof layerName !== "string")
+        throw new Error('invalid item in "layer" node');
+      layerName = layerName.replace(/^"(.*)"$/, "$1"); // remove quotes
 
-      const flippable = layerName.startsWith('F.') || layerName.startsWith('B.');
+      const flippable =
+        layerName.startsWith("F.") || layerName.startsWith("B.");
       const flippedLayerName = layerName.replace(/^([FB])\./, (match) => {
-        if (match === 'F.') { return 'B.'; }
-        else if (match === 'B.') { return 'F.'; }
-        else { throw new Error(`Invalid layer name: ${layerName}`); }
+        if (match === "F.") {
+          return "B.";
+        } else if (match === "B.") {
+          return "F.";
+        } else {
+          throw new Error(`Invalid layer name: ${layerName}`);
+        }
       });
 
       if (flippable) {
-        context.appendOutputRaw(`(layer "\${(flip ? "${flippedLayerName}" : "${layerName}")}")`);
+        context.appendOutputRaw(
+          `(layer "\${(flip ? "${flippedLayerName}" : "${layerName}")}")`,
+        );
       } else {
         context.appendOutputRaw(`(layer "${layerName}")`);
       }
     },
   },
   {
-    name: 'layers',
+    name: "layers",
     match(context) {
-      return context.current.type === 'layers';
+      return context.current.type === "layers";
     },
     write(context) {
       const node = context.current as SExprNode;
-      if (node.items.some((item) => typeof item !== 'string')) throw new Error('invalid item in "layers" node');
+      if (node.items.some((item) => typeof item !== "string"))
+        throw new Error('invalid item in "layers" node');
 
       const layerNames = node.items
-        .map((layer) => (layer as string).replace(/^"|"$/g, ''))
+        .map((layer) => (layer as string).replace(/^"|"$/g, ""))
         .map((layer) => {
-          if (layer.startsWith('F.')) {
+          if (layer.startsWith("F.")) {
             return `"\${(flip ? "B" : "F")}${layer.slice(1)}"`;
-          } else if (layer.startsWith('B.')) {
+          } else if (layer.startsWith("B.")) {
             return `"\${(flip ? "F" : "B")}${layer.slice(1)}"`;
           } else {
             return `"${layer}"`;
           }
         });
-      context.appendOutputRaw(`(layers ${layerNames.join(' ')})`);
+      context.appendOutputRaw(`(layers ${layerNames.join(" ")})`);
     },
   },
   {
-    name: 'at',
+    name: "at",
     match(context) {
-      return context.current.type === 'at';
+      return context.current.type === "at";
     },
     write(context) {
       const node = context.current as SExprNode;
 
-      if (node.items.length !== 2 && node.items.length !== 3) throw new Error('invalid number of items in "at" node');
-      if (node.items.some((item) => typeof item !== 'string')) throw new Error('invalid item in "at" node');
+      if (node.items.length !== 2 && node.items.length !== 3)
+        throw new Error('invalid number of items in "at" node');
+      if (node.items.some((item) => typeof item !== "string"))
+        throw new Error('invalid item in "at" node');
 
       const x = node.items[0] as string;
       const y = node.items[1] as string;
-      const r = node.items.length === 3 ? node.items[2] as string : '0';
+      const r = node.items.length === 3 ? (node.items[2] as string) : "0";
 
       const parents = context.parents;
-      const drawing = parents.includes('fp_text') || parents.includes('fp_text_box') || parents.includes('property');
+      const drawing =
+        parents.includes("fp_text") ||
+        parents.includes("fp_text_box") ||
+        parents.includes("property");
 
-      context.appendOutputRaw(`(at ${x} \${flipN(flip, ${y})} \${flipR(flip, p.r + ${r})${drawing ? ' % 180' : ''}})`);
-    }
+      context.appendOutputRaw(
+        `(at ${x} \${flipN(flip, ${y})} \${flipR(flip, p.r + ${r})${drawing ? " % 180" : ""}})`,
+      );
+    },
   },
   {
-    name: 'effects',
+    name: "effects",
     match(context) {
-      return context.current.type === 'effects';
+      return context.current.type === "effects";
     },
     write(context) {
       context.appendOutputRaw(`(${context.current.type}`);
       for (const item of context.current.items) {
-        context.appendOutputRaw(' ');
+        context.appendOutputRaw(" ");
         context.writeChildItem(item);
       }
 
       // add `justify` node if there isn't one
-      if (!context.current.items.some((item) => typeof item !== 'string' && item.type === 'justify')) {
-        context.appendOutputRaw(' ');
+      if (
+        !context.current.items.some(
+          (item) => typeof item !== "string" && item.type === "justify",
+        )
+      ) {
+        context.appendOutputRaw(" ");
         context.writeChildItem({
-          type: 'justify',
+          type: "justify",
           items: [],
         });
       }
 
-      context.appendOutputRaw(')');
+      context.appendOutputRaw(")");
     },
   },
   {
-    name: 'justify',
+    name: "justify",
     match(context) {
-      return context.current.type === 'justify';
+      return context.current.type === "justify";
     },
     write(context) {
       const node = context.current as SExprNode;
-      const mirror = node.items.some((item) => item === 'mirror');
+      const mirror = node.items.some((item) => item === "mirror");
 
       context.appendOutputRaw(`(${node.type}`);
       for (const item of node.items) {
-        if (typeof item === 'string' && item !== 'mirror') {
-          context.appendOutputRaw(' ');
+        if (typeof item === "string" && item !== "mirror") {
+          context.appendOutputRaw(" ");
           context.appendOutputRaw(item);
         }
       }
@@ -197,49 +220,53 @@ const writers: NodeWriters = [
         context.appendOutputRaw('${ flip ? " mirror" : ""}');
       }
 
-      context.appendOutputRaw(')');
-    }
+      context.appendOutputRaw(")");
+    },
   },
   // TODO: chamfer?
   {
-    name: 'skip', // DO NOT CHANGE NAME, used below to skip adding "fp.push(``);"
+    name: "skip", // DO NOT CHANGE NAME, used below to skip adding "fp.push(``);"
     match(context: WriterContext) {
       return [
-        'version', // Is required by spec, but causing weird issues.
-        'uuid',
-        'group',
-        'tedit',
-        'tstamp',
-        'generator', // Required by spec to not be "pcbnew" when generated by third party generators
-        'generator_version',
+        "version", // Is required by spec, but causing weird issues.
+        "uuid",
+        "group",
+        "tedit",
+        "tstamp",
+        "generator", // Required by spec to not be "pcbnew" when generated by third party generators
+        "generator_version",
       ].includes(context.current.type);
     },
     write(context: WriterContext) {
       // remove from output
-    }
-  },
-  {
-    name: 'property', // DO NOT CHANGE NAME, used below to add "//" to comment out those lines
-    match(context: WriterContext) { return context.current.type === 'property' },
-    write(context: WriterContext) {
-      context.appendOutputRaw(`(${context.current.type}`);
-      for (const item of context.current.items) {
-        context.appendOutputRaw(' ');
-        context.writeChildItem(item);
-      }
-      context.appendOutputRaw(')');
     },
   },
   {
-    name: 'fallback catchall',
-    match(context: WriterContext) { return true }, // handles everything
+    name: "property", // DO NOT CHANGE NAME, used below to add "//" to comment out those lines
+    match(context: WriterContext) {
+      return context.current.type === "property";
+    },
     write(context: WriterContext) {
       context.appendOutputRaw(`(${context.current.type}`);
       for (const item of context.current.items) {
-        context.appendOutputRaw(' ');
+        context.appendOutputRaw(" ");
         context.writeChildItem(item);
       }
-      context.appendOutputRaw(')');
+      context.appendOutputRaw(")");
+    },
+  },
+  {
+    name: "fallback catchall",
+    match(context: WriterContext) {
+      return true;
+    }, // handles everything
+    write(context: WriterContext) {
+      context.appendOutputRaw(`(${context.current.type}`);
+      for (const item of context.current.items) {
+        context.appendOutputRaw(" ");
+        context.writeChildItem(item);
+      }
+      context.appendOutputRaw(")");
     },
   },
 ];
@@ -248,31 +275,36 @@ export type ErgogenFootprintConverterConfig = {
   padPrefix: string;
   prefixNumberPadsOnly: boolean;
   netNameOverride: Record<string, string>;
+  enabledPropertyNames: string[];
 };
 
 const defaultConfig: ErgogenFootprintConverterConfig = {
-  padPrefix: 'P',
+  padPrefix: "P",
   prefixNumberPadsOnly: true,
   netNameOverride: {},
+  enabledPropertyNames: [],
 };
 
 export default function convertToErgogenFootprint(
   footprint: SExprNode,
-  config: Partial<ErgogenFootprintConverterConfig> = {}
+  config: Partial<ErgogenFootprintConverterConfig> = {},
 ): {
   ergogenCode: string;
   netMap: Record<string, string>;
 } {
   const fullConfig = { ...defaultConfig, ...config };
   const footprintCode: string[] = [];
-  const pad2net = new Map<string, string>(Object.entries(fullConfig.netNameOverride));
+  const pad2net = new Map<string, string>(
+    Object.entries(fullConfig.netNameOverride),
+  );
   const extraFunctions = new Set<string>();
+  const enabledPropertyNames = new Set(fullConfig.enabledPropertyNames);
 
   const baseContext: WriterContext = {
-    current: { type: '', items: [] }, // dummy placeholder
+    current: { type: "", items: [] }, // dummy placeholder
     parents: [],
     getNetName: (padName: string): string | null => {
-      if (padName === '') {
+      if (padName === "") {
         return null;
       }
 
@@ -306,10 +338,16 @@ export default function convertToErgogenFootprint(
     addExtraFunction: (code: string) => {
       extraFunctions.add(code);
     },
-    appendOutput: (text: string) => footprintCode.push(text.replaceAll('\\', '\\\\').replaceAll('`', '\\`').replaceAll('${', '\\${')),
+    appendOutput: (text: string) =>
+      footprintCode.push(
+        text
+          .replaceAll("\\", "\\\\")
+          .replaceAll("`", "\\`")
+          .replaceAll("${", "\\${"),
+      ),
     appendOutputRaw: (text: string) => footprintCode.push(text),
     writeChildItem(node: SExprItem) {
-      if (typeof node === 'string') {
+      if (typeof node === "string") {
         this.appendOutput(node);
         return;
       }
@@ -320,59 +358,77 @@ export default function convertToErgogenFootprint(
         parents: [...this.parents, this.current.type],
       };
 
-      const writer = writers.find(w => w.match(childContext));
+      const writer = writers.find((w) => w.match(childContext));
       if (writer) {
         writer.write(childContext);
       } else {
-        throw new Error(`No writer found for a node with type ${node.type}, parents: [${this.parents.join(', ')}]`);
+        throw new Error(
+          `No writer found for a node with type ${node.type}, parents: [${this.parents.join(", ")}]`,
+        );
       }
-    }
+    },
   };
 
   (function writeStart() {
-    const footprintLayerNode = footprint.items.find(i => typeof i !== 'string' && i.type === 'layer') as SExprNode | undefined;
-    let defaultSide = 'F';
-    let layerName = '';
+    const footprintLayerNode = footprint.items.find(
+      (i) => typeof i !== "string" && i.type === "layer",
+    ) as SExprNode | undefined;
+    let defaultSide = "F";
+    let layerName = "";
     if (footprintLayerNode) {
       layerName = footprintLayerNode.items[0] as string;
-      if (typeof layerName === 'string') {
-        layerName = layerName.replace(/^"(.*)"$/, '$1'); // remove quotes
+      if (typeof layerName === "string") {
+        layerName = layerName.replace(/^"(.*)"$/, "$1"); // remove quotes
       }
-      if (layerName.startsWith('B.')) {
-        defaultSide = 'B';
+      if (layerName.startsWith("B.")) {
+        defaultSide = "B";
       }
     }
 
-    let flipSide = defaultSide === 'F' ? 'B' : 'F';
+    let flipSide = defaultSide === "F" ? "B" : "F";
 
     baseContext.appendOutputRaw(`const flip = p.side === "${flipSide}";\n`);
-    baseContext.appendOutputRaw(`if (!flip && p.side !== "${defaultSide}") throw new Error('unsupported side: ' + p.side);\n\n`);
+    baseContext.appendOutputRaw(
+      `if (!flip && p.side !== "${defaultSide}") throw new Error('unsupported side: ' + p.side);\n\n`,
+    );
 
     baseContext.appendOutputRaw(`fp.push(\`(footprint`);
     for (const item of footprint.items) {
-      if (typeof item === 'string') {
+      if (typeof item === "string") {
         baseContext.appendOutputRaw(` `);
         baseContext.appendOutput(item);
       }
     }
     baseContext.appendOutputRaw(`\`);\n`);
 
-    baseContext.appendOutputRaw(`fp.push(\`(at \${p.x} \${p.y} \${flipR(flip, p.r)})\`);\n`);
+    baseContext.appendOutputRaw(
+      `fp.push(\`(at \${p.x} \${p.y} \${flipR(flip, p.r)})\`);\n`,
+    );
 
     // layer
     if (layerName) {
-      baseContext.appendOutputRaw(`fp.push(\`(layer "\${(flip ? "${layerName.replace(defaultSide, flipSide)}" : "${layerName}")}")\`);\n`);
+      baseContext.appendOutputRaw(
+        `fp.push(\`(layer "\${(flip ? "${layerName.replace(defaultSide, flipSide)}" : "${layerName}")}")\`);\n`,
+      );
     }
 
-    baseContext.appendOutputRaw(`fp.push(\`(property "Reference" "\${p.ref}" \${p.ref_hide} (at 0 0 \${flipR(flip, p.r) % 180}) (layer "\${p.side}.SilkS") (effects (font (size 1 1) (thickness 0.15))\${ p.side === "B" ? " (justify mirror)" : ""}))\`);\n`);
-    baseContext.appendOutputRaw(`fp.push(\`(property "Value" "" hide (at 0 0 \${flipR(flip, p.r) % 180}) (layer "\${p.side}.Fab") (effects (font (size 1 1) (thickness 0.15))\${ p.side === "B" ? " (justify mirror)" : ""}))\`);\n`);
-    baseContext.appendOutputRaw(`fp.push(\`(property "Datasheet" "" hide (at 0 0 \${flipR(flip, p.r) % 180}) (layer "\${p.side}.Fab") (effects (font (size 1 1) (thickness 0.15))\${ p.side === "B" ? " (justify mirror)" : ""}))\`);\n`);
-    baseContext.appendOutputRaw(`fp.push(\`(property "Description" "" hide (at 0 0 \${flipR(flip, p.r) % 180}) (layer "\${p.side}.Fab") (effects (font (size 1 1) (thickness 0.15))\${ p.side === "B" ? " (justify mirror)" : ""}))\`);\n`);
+    baseContext.appendOutputRaw(
+      `fp.push(\`(property "Reference" "\${p.ref}" \${p.ref_hide} (at 0 0 \${flipR(flip, p.r) % 180}) (layer "\${p.side}.SilkS") (effects (font (size 1 1) (thickness 0.15))\${ p.side === "B" ? " (justify mirror)" : ""}))\`);\n`,
+    );
+    baseContext.appendOutputRaw(
+      `fp.push(\`(property "Value" "" hide (at 0 0 \${flipR(flip, p.r) % 180}) (layer "\${p.side}.Fab") (effects (font (size 1 1) (thickness 0.15))\${ p.side === "B" ? " (justify mirror)" : ""}))\`);\n`,
+    );
+    baseContext.appendOutputRaw(
+      `fp.push(\`(property "Datasheet" "" hide (at 0 0 \${flipR(flip, p.r) % 180}) (layer "\${p.side}.Fab") (effects (font (size 1 1) (thickness 0.15))\${ p.side === "B" ? " (justify mirror)" : ""}))\`);\n`,
+    );
+    baseContext.appendOutputRaw(
+      `fp.push(\`(property "Description" "" hide (at 0 0 \${flipR(flip, p.r) % 180}) (layer "\${p.side}.Fab") (effects (font (size 1 1) (thickness 0.15))\${ p.side === "B" ? " (justify mirror)" : ""}))\`);\n`,
+    );
   })();
 
   const groupedElements = groupElements(footprint);
   for (const group of groupedElements) {
-    baseContext.appendOutputRaw('\n');
+    baseContext.appendOutputRaw("\n");
     if (group.groupName) {
       baseContext.appendOutputRaw(`// ${group.groupName}\n`);
     }
@@ -383,19 +439,24 @@ export default function convertToErgogenFootprint(
         current: item,
       };
 
-      const writer = writers.find(w => w.match(newContext));
+      const writer = writers.find((w) => w.match(newContext));
       if (writer) {
-        if (writer.name === 'skip') {
+        if (writer.name === "skip") {
           continue; // skip this item
         }
-        if (writer.name === 'property') {
-          newContext.appendOutputRaw('// ');
+        if (
+          writer.name === "property" &&
+          !isEnabledProperty(item, enabledPropertyNames)
+        ) {
+          newContext.appendOutputRaw("// ");
         }
-        newContext.appendOutputRaw('fp.push(`');
+        newContext.appendOutputRaw("fp.push(`");
         writer.write(newContext);
-        newContext.appendOutputRaw('`);\n');
+        newContext.appendOutputRaw("`);\n");
       } else {
-        throw new Error(`No writer found for a node with type ${item.type}, parents: [${newContext.parents.join(', ')}]`);
+        throw new Error(
+          `No writer found for a node with type ${item.type}, parents: [${newContext.parents.join(", ")}]`,
+        );
       }
     }
   }
@@ -405,14 +466,13 @@ export default function convertToErgogenFootprint(
     designator: 'XX',
     side: 'F',
 ${Array.from(pad2net.values())
-      .sort()
-      .map((netName) => `    ${netName}: { type: 'net', value: undefined },`)
-      .join('\n')
-    }
+  .sort()
+  .map((netName) => `    ${netName}: { type: 'net', value: undefined },`)
+  .join("\n")}
   },
   body: p => {
     const fp = [];
-    ${footprintCode.join('')}
+    ${footprintCode.join("")}
     fp.push(')');
     return fp.join('\\n');
   }
@@ -425,7 +485,7 @@ function normalizeAngle(angle) {
 }
 function flipR(flip, r) { return normalizeAngle(flip ? (180 - r) : r) }
 function flipN(flip, n) { return flip ? -n : n }
-${Array.from(extraFunctions).join('\n')}
+${Array.from(extraFunctions).join("\n")}
 `;
 
   return {
@@ -434,12 +494,23 @@ ${Array.from(extraFunctions).join('\n')}
   };
 }
 
+function isEnabledProperty(node: SExprNode, enabledPropertyNames: Set<string>) {
+  const propertyName = node.items[0];
+  if (typeof propertyName !== "string") {
+    return false;
+  }
+
+  return enabledPropertyNames.has(propertyName.replace(/^"(.*)"$/, "$1"));
+}
+
 /**
  * Groups elements of a footprint into well-known groups.
  * @param footprint The footprint to group.
  * @returns An array of groups, each containing a group name and an array of items.
  */
-function groupElements(footprint: SExprNode): { groupName: string; items: SExprNode[] }[] {
+function groupElements(
+  footprint: SExprNode,
+): { groupName: string; items: SExprNode[] }[] {
   enum GroupType {
     Wellknown = 0,
     Unknown = 1,
@@ -451,51 +522,51 @@ function groupElements(footprint: SExprNode): { groupName: string; items: SExprN
   }
   // Drawings uses layer name as group names
   const GroupTypeNames = {
-    [GroupType.Wellknown]: '',
-    [GroupType.Unknown]: 'Unknown to kicad2ergogen',
-    [GroupType.Pad]: 'Pads',
-    [GroupType.Zone]: 'Zones',
-    [GroupType.Model]: '3D Models',
-    [GroupType.Property]: 'Properties',
+    [GroupType.Wellknown]: "",
+    [GroupType.Unknown]: "Unknown to kicad2ergogen",
+    [GroupType.Pad]: "Pads",
+    [GroupType.Zone]: "Zones",
+    [GroupType.Model]: "3D Models",
+    [GroupType.Property]: "Properties",
   };
 
   const groupMap = new Map<GroupType, SExprNode[]>();
 
   for (const item of footprint.items) {
     let groupType: GroupType;
-    if (typeof item === 'string') {
+    if (typeof item === "string") {
       continue;
     }
     switch (item.type) {
-      case 'at':
-      case 'layer':
+      case "at":
+      case "layer":
         // skip "layer" node for the footprint as we have special handling for it
         continue;
-      case 'attr':
-      case 'tags':
-      case 'descr':
+      case "attr":
+      case "tags":
+      case "descr":
         groupType = GroupType.Wellknown;
         break;
-      case 'pad':
+      case "pad":
         groupType = GroupType.Pad;
         break;
-      case 'fp_text':
-      case 'fp_text_box':
-      case 'fp_line':
-      case 'fp_rect':
-      case 'fp_circle':
-      case 'fp_arc':
-      case 'fp_poly':
-      case 'fp_curve':
+      case "fp_text":
+      case "fp_text_box":
+      case "fp_line":
+      case "fp_rect":
+      case "fp_circle":
+      case "fp_arc":
+      case "fp_poly":
+      case "fp_curve":
         groupType = GroupType.Drawing;
         break;
-      case 'zone':
+      case "zone":
         groupType = GroupType.Zone;
         break;
-      case 'model':
+      case "model":
         groupType = GroupType.Model;
         break;
-      case 'property':
+      case "property":
         groupType = GroupType.Property;
         break;
       default:
@@ -513,15 +584,19 @@ function groupElements(footprint: SExprNode): { groupName: string; items: SExprN
     items: SExprNode[];
   }[] = [];
 
-  for (const [groupType, items] of Array.from(groupMap.entries()).sort((a, b) => a[0] - b[0])) {
-
+  for (const [groupType, items] of Array.from(groupMap.entries()).sort(
+    (a, b) => a[0] - b[0],
+  )) {
     if (groupType === GroupType.Drawing) {
       // group again by drawing layer
       const drawingGroups = new Map<string, SExprNode[]>();
       for (const item of items) {
-
-        const layerNode = item.items.find(i => typeof i !== 'string' && i.type === 'layer') as SExprNode | undefined;
-        const layerName = layerNode ? (layerNode.items[0] as string).replace(/^"(.*)"$/, '$1') : 'Unknown Layer';
+        const layerNode = item.items.find(
+          (i) => typeof i !== "string" && i.type === "layer",
+        ) as SExprNode | undefined;
+        const layerName = layerNode
+          ? (layerNode.items[0] as string).replace(/^"(.*)"$/, "$1")
+          : "Unknown Layer";
 
         if (!drawingGroups.has(layerName)) {
           drawingGroups.set(layerName, []);
@@ -529,9 +604,11 @@ function groupElements(footprint: SExprNode): { groupName: string; items: SExprN
         drawingGroups.get(layerName)?.push(item);
       }
 
-      for (const [layerName, layerItems] of Array.from(drawingGroups.entries()).sort((a, b) => {
-        const layerA = a[0].split('.').reverse().join('.'); // F.Cu -> Cu.F
-        const layerB = b[0].split('.').reverse().join('.');
+      for (const [layerName, layerItems] of Array.from(
+        drawingGroups.entries(),
+      ).sort((a, b) => {
+        const layerA = a[0].split(".").reverse().join("."); // F.Cu -> Cu.F
+        const layerB = b[0].split(".").reverse().join(".");
         return layerA.localeCompare(layerB);
       })) {
         groups.push({
@@ -539,7 +616,6 @@ function groupElements(footprint: SExprNode): { groupName: string; items: SExprN
           items: layerItems,
         });
       }
-
     } else {
       groups.push({
         groupName: GroupTypeNames[groupType],

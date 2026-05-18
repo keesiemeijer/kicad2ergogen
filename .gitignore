@@ -176,3 +176,18 @@ env.bak/
 venv.bak/
 
 temp/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+# generated footprint directories
+footprints-kicad/*
+!footprints-kicad/README.md
+footprints-ergogen/*
+!footprints-ergogen/README.md
