@@ -6,7 +6,7 @@ A batch KiCad footprint to Ergogen footprint converter.
 
 To convert footprints online go to [https://kicad2ergogen.genteure.com](https://kicad2ergogen.genteure.com)
 
-To batch convert local KiCad footprints from your terminal:
+To batch convert local KiCad footprints from your terminal use:
 
 ```bash
 pnpm convert-footprints
