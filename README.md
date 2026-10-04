@@ -1,18 +1,18 @@
 # kicad2ergogen
 
-A KiCad footprint to Ergogen footprint converter.
+A batch KiCad footprint to Ergogen footprint converter.
 
 ## Usage
 
 <https://kicad2ergogen.genteure.com>
 
-To convert local KiCad footprints from the terminal:
+To batch convert local KiCad footprints from the terminal:
 
 ```bash
 pnpm convert-footprints
 ```
 
-This defaults to reading from `footprints-kicad` and writing to `footprints-ergogen`.
+This reads all the KiCad files from the `footprints-kicad` directory and writes the converted ergogen footprint files to `footprints-ergogen`.
 It also accepts either a single `.kicad_mod` file or a directory of footprints:
 
 ```bash
